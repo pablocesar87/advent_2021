@@ -2,6 +2,7 @@ import sys
 
 from typing import List
 from abc import ABC, abstractmethod
+from collections import Counter
 
 
 """
@@ -104,10 +105,62 @@ class Engine(BaseDevice):
         return advanced_orders["depth"] * advanced_orders["forward"]
 
 
+class BinaryDiagnostic(BaseDevice):
+    """
+    Day 3 feature
+    """
+
+    def __init__(self, data_source: str):
+        self.binary_diagnosis = []
+        with open(data_source, "r") as binary_diagnosis_input:
+            for binary_input in binary_diagnosis_input:
+                self.binary_diagnosis.append(binary_input.strip())
+
+    def operate(self):
+        gamma_rate_binary, epsilon_rate_binary = self._get_rates()
+        gamma_rate = int(gamma_rate_binary, 2)
+        epsilon_rate = int(epsilon_rate_binary, 2)
+        print(f"Gamma rate is: {gamma_rate}")
+        print(f"Epsilon rate is: {epsilon_rate}")
+        print("Power consumption is: {}".format(gamma_rate * epsilon_rate))
+
+    def _get_rates(self):
+        gamma_rate_binary = ""
+        epsilon_rate_binary = ""
+        for index in range(len(self.binary_diagnosis[0])):
+            binary_ocurrence = self._prepare_binary_ocurrence(index)
+            gamma_rate_binary += self._get_binary_ocurrence(
+                binary_ocurrence, policy="max"
+            )
+
+            epsilon_rate_binary += self._get_binary_ocurrence(
+                binary_ocurrence, policy="min"
+            )
+        return gamma_rate_binary, epsilon_rate_binary
+
+    def _prepare_binary_ocurrence(self, index: int):
+        binary_ocurrence = []
+        for binary_input in self.binary_diagnosis:
+            binary_ocurrence.append(binary_input[index])
+        return binary_ocurrence
+
+    def _get_binary_ocurrence(self, binary_ocurrence: List[str], policy: str):
+        data = Counter(binary_ocurrence)
+        if policy == "max":
+            return max(binary_ocurrence, key=data.get)
+        elif policy == "min":
+            return min(binary_ocurrence, key=data.get)
+        raise ValueError("Not allowed binary_ocurrence policy")
+
+
 def operate_submarine():
     allowed_operations = {
         "sonar": {"device": Sonar, "data_source": "measurements.txt"},
         "engine": {"device": Engine, "data_source": "movement_orders.txt"},
+        "binary_diagnosis": {
+            "device": BinaryDiagnostic,
+            "data_source": "binary_diagnosis_input.txt",
+        },
     }
 
     if len(sys.argv) > 2:
