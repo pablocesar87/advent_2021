@@ -1,9 +1,10 @@
 import sys
+import pandas as pd
 
 from typing import List
 from abc import ABC, abstractmethod
 from collections import Counter
-
+from functools import partial
 
 """
 Let's build a submarine!
@@ -153,6 +154,119 @@ class BinaryDiagnostic(BaseDevice):
         raise ValueError("Not allowed binary_ocurrence policy")
 
 
+class Bingo(BaseDevice):
+    """
+    Day 4 Feature
+    """
+
+    COLUMNS = list("ABCDE")
+
+    def __init__(self, data_source: str):
+        self.data_source = data_source
+
+    class Carton:
+        def __init__(self, carton_df):
+            self.carton_df = carton_df
+            self.picked = pd.DataFrame([[False] * 5 for _ in range(5)], columns=Bingo.COLUMNS)
+            self.won = False
+
+        def check_new_number(self, number):
+            for column in Bingo.COLUMNS:
+                if not self.carton_df[self.carton_df[column] == number].empty:
+                    self._mark_picked_number(column, self.carton_df[self.carton_df[column] == number].index)
+
+        def check_winner_carton(self):
+            for column in Bingo.COLUMNS:
+                if self.picked[column].all():
+                    return True
+            for row in self.picked.index:
+                if self.picked.iloc[row].all():
+                    return True
+            return False
+
+        def get_final_score(self, winner_number):
+            def _apply(self, column, row):
+                for index, value in enumerate(row):
+                    if self.picked[column][index]:
+                        self.carton_df[column][index] = 0
+            for column in Bingo.COLUMNS:
+                self.carton_df.apply(partial(_apply, self, column))
+            return self.carton_df.values.sum() * winner_number
+
+        def _mark_picked_number(self, column, index):
+            self.picked[column].iloc[index] = True
+
+    def operate(self):
+        # prepare the bingo
+        bingo_cartons = []
+        bingo_cartons_objects = []
+
+        with open(self.data_source, "r") as bingo_input:
+            for index, value in enumerate(bingo_input):
+                if index == 0:
+                    bingo_numbers = value.strip().split(",")
+                elif index > 1:
+                    row = value.strip().replace("  ", " ").split(" ")
+                    if len(row) != 5:
+                        continue
+                    bingo_cartons.append(row)
+                    if len(bingo_cartons) == 5:
+                        carton_df = pd.DataFrame(bingo_cartons, columns=Bingo.COLUMNS)
+                        for column in Bingo.COLUMNS:
+                            carton_df[column] = pd.to_numeric(carton_df[column])
+                        bingo_cartons_objects.append(self.Carton(carton_df))
+                        bingo_cartons = []
+
+        # play the bingo
+        for new_number in bingo_numbers:
+            for carton in bingo_cartons_objects:
+                carton.check_new_number(int(new_number))
+                if carton.check_winner_carton():
+                    carton.won = True
+                    if self._last_carton_to_win(bingo_cartons_objects):
+                        print("The final score is: {}".format(carton.get_final_score(int(new_number))))
+                        sys.exit(1)
+
+    def _last_carton_to_win(self, cartons):
+        return all([carton.won for carton in cartons])
+
+
+class VentsChecker(BaseDevice):
+    """
+    Day 5 Feature
+    """
+    def __init__(self, data_source: str):
+        self.data_source = data_source
+
+    def operate(self):
+        print(
+            "Total vents overlaps: {}".format(self._check_vents())
+        )
+
+    def _check_vents(self):
+        # create a grid of vents with all the coordenates that have part of a vent
+        # if a coordenate already has a vent, then + 1, meaning there is a overlap
+        vents = {}
+        with open(self.data_source, "r") as hydrotermal_vents_input:
+            for vent in hydrotermal_vents_input:
+                beggining, end = vent.strip().split(" -> ")
+                x_1, y_1 = map(int, beggining.split(","))
+                x_2, y_2 = map(int, end.split(","))
+                if x_1 == x_2 or y_1 == y_2:
+                    for x in range(min(x_1, x_2), max(x_1, x_2) + 1):
+                        for y in range(min(y_1, y_2), max(y_1, y_2) + 1):
+                            vents[(x, y)] = vents.get((x, y), 0) + 1
+
+
+        # check through all the grid how many overlaps we can find
+        overlaps = 0
+        for _, value in vents.items():
+            if value > 1:
+                overlaps += 1
+        return overlaps
+
+
+
 def operate_submarine():
     allowed_operations = {
         "sonar": {"device": Sonar, "data_source": "measurements.txt"},
@@ -161,6 +275,8 @@ def operate_submarine():
             "device": BinaryDiagnostic,
             "data_source": "binary_diagnosis_input.txt",
         },
+        "bingo": {"device": Bingo, "data_source": "bingo_input.txt"},
+        "vents_checker": {"device": VentsChecker, "data_source": "hydrotermal_vents.txt"},
     }
 
     if len(sys.argv) > 2:
