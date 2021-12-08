@@ -11,6 +11,7 @@ class Carton:
 	def __init__(self, carton_df):
 		self.carton_df = carton_df
 		self.picked = pd.DataFrame([[False] * 5 for _ in range(5)], columns=COLUMNS)
+		self.won = False
 
 	def check_new_number(self, number):
 		for column in COLUMNS:
@@ -39,6 +40,11 @@ class Carton:
 		self.picked[column].iloc[index] = True
 
 
+def last_carton_to_win(cartons):
+	return all([carton.won for carton in cartons])
+
+
+
 def play():
 	# prepare the bingo
 	bingo_cartons = []
@@ -65,8 +71,10 @@ def play():
 		for carton in bingo_cartons_objects:
 			carton.check_new_number(int(new_number))
 			if carton.check_winner_carton():
-				print("The final score is: {}".format(carton.get_final_score(int(new_number))))
-				sys.exit(1)
+				carton.won = True
+				if last_carton_to_win(bingo_cartons_objects):
+					print("The final score is: {}".format(carton.get_final_score(int(new_number))))
+					sys.exit(1)
 
 
 if __name__ == "__main__":
