@@ -17,10 +17,6 @@ class Carton:
 			if not self.carton_df[self.carton_df[column] == number].empty:
 				self._mark_picked_number(column, self.carton_df[self.carton_df[column] == number].index)
 
-	def _mark_picked_number(self, column, index):
-		self.picked[column].iloc[index] = True
-
-
 	def check_winner_carton(self):
 		for column in COLUMNS:
 			if self.picked[column].all():
@@ -31,16 +27,16 @@ class Carton:
 		return False
 
 	def get_final_score(self, winner_number):
-		# suma todos los que son false
-		# multiplica por el numero que ha hecho ganar
 		def _apply(self, column, row):
 			for index, value in enumerate(row):
 				if self.picked[column][index]:
 					self.carton_df[column][index] = 0
-
 		for column in COLUMNS:
 			self.carton_df.apply(partial(_apply, self, column))
 		return self.carton_df.values.sum() * winner_number
+
+	def _mark_picked_number(self, column, index):
+		self.picked[column].iloc[index] = True
 
 
 def play():
